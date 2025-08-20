@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Z coin collector - Online Ranking</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Prevent scrolling and bouncing on iOS */
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            position: fixed;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* ===================== */
+        /*  GAME CONTAINER       */
+        /* ===================== */
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 800px;
+            max-height: 600px;
+            background: linear-gradient(to bottom,
+                #000428 0%,
+                #001e3c 40%,
+                #003d5b 70%,
+                #00547a 85%,
+                #006d8c 95%,
+                #0088a9 100%
+            );
+            border: 3px solid #00bcd4;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 188, 212, 0.5), inset 0 -50px 100px rgba(0, 188, 212, 0.2);
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+            
+            #gameContainer {
+                width: 100vw;
+                height: 100vh;
+                max-width: 100vw;
+                max-height: 100vh;
+                border: none;
+                border-radius: 0;
+                margin: 0;
+            }
+        }
+
+        #gameContainer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at bottom, rgba(0, 188, 212, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* ===================== */
+        /*  START MENU           */
+        /* ===================== */
+        #startMenu {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 30, 60, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 20;
+            border: 3px solid #00bcd4;
+            box-shadow: 0 0 30px rgba(0, 188, 212, 0.8);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 768px) {
+            #startMenu {
+                border: none;
+                gap: 15px;
+            }
+        }
+
+        #startMenu h1 {
+            margin: 0;
+            font-size: clamp(28px, 7vw, 42px);
+            color: #00e5ff;
+            text-shadow: 0 0 20px rgba(0, 229, 255, 1);
+            text-align: center;
+        }
+
+        /* Player Name Input */
+        #playerNameInput {
+            padding: 12px 20px;
+            font-size: 18px;
+            background: rgba(0, 188, 212, 0.1);
+            color: #00e5ff;
+            border: 2px solid #00bcd4;
+            border-radius: 8px;
+            text-align: center;
+            width: 250px;
+            max-width: 80%;
+        }
+
+        #playerNameInput::placeholder {
+            color: rgba(0, 188, 212, 0.5);
+        }
+
+        #playerNameInput:focus {
+            outline: none;
+            background: rgba(0, 188, 212, 0.2);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+        }
+
+        /* Buttons */
+        .menu-btn {
+            padding: 15px 30px;
+            font-size: clamp(18px, 4vw, 22px);
+            background: #00bcd4;
+            color: #001e3c;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            touch-action: manipulation;
+            margin: 5px;
+        }
+
+        .menu-btn:active {
+            background: #00e5ff;
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.8);
+            transform: scale(0.95);
+        }
+
+        #rankingBtn {
+            background: #ffeb3b;
+            color: #333;
+        }
+
+        #rankingBtn:active {
+            background: #fff59d;
+        }
+
+        /* Online Ranking Display */
+        #onlineRanking {
+            background: rgba(0, 30, 60, 0.9);
+            border: 2px solid #00bcd4;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            max-width: 400px;
+            width: 90%;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        #onlineRanking h3 {
+            color: #ffeb3b;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(255, 235, 59, 0.8);
+        }
+
+        .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: rgba(0, 188, 212, 0.1);
+            border-radius: 8px;
+            color: #00e5ff;
+            font-size: 14px;
+        }
+
+        .ranking-item.top1 {
+            background: linear-gradient(90deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1));
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .ranking-item.top2 {
+            background: linear-gradient(90deg, rgba(192, 192, 192, 0.3), rgba(192, 192, 192, 0.1));
+            color: #c0c0c0;
+        }
+
+        .ranking-item.top3 {
+            background: linear-gradient(90deg, rgba(205, 127, 50, 0.3), rgba(205, 127, 50, 0.1));
+            color: #cd7f32;
+        }
+
+        .ranking-item.current-player {
+            border: 2px solid #ffeb3b;
+            background: rgba(255, 235, 59, 0.1);
+        }
+
+        .rank-number {
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 30px;
+        }
+
+        .rank-name {
+            flex: 1;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .rank-score {
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        #loadingRanking {
+            text-align: center;
+            color: #00bcd4;
+            padding: 20px;
+        }
+
+        /* Ranking Screen */
+        #rankingScreen {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 30, 60, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 21;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #rankingScreen h2 {
+            color: #ffeb3b;
+            font-size: clamp(24px, 6vw, 32px);
+            text-shadow: 0 0 20px rgba(255, 235, 59, 1);
+            margin: 0;
+        }
+
+        #fullRankingList {
+            background: rgba(0, 30, 60, 0.9);
+            border: 2px solid #00bcd4;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        /* ===================== */
+        /*  STARS                */
+        /* ===================== */
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 4s ease-in-out infinite;
+        }
+        .star.small { width: 1px; height: 1px; animation-duration: 3s; }
+        .star.medium { width: 2px; height: 2px; animation-duration: 4s; box-shadow: 0 0 2px rgba(255,255,255,0.8); }
+        .star.large { width: 3px; height: 3px; animation-duration: 5s; box-shadow: 0 0 4px rgba(100,200,255,0.9); }
+        @keyframes twinkle { 0%,100% {opacity:0; transform:scale(0.5);} 50% {opacity:1; transform:scale(1);} }
+
+        /* ===================== */
+        /*  PLAYER               */
+        /* ===================== */
+        #player {
+            position: absolute;
+            width: clamp(40px, 10vw, 60px);
+            height: clamp(40px, 10vw, 60px);
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><radialGradient id="playerGrad" cx="50%25" cy="30%25" r="50%25"><stop offset="0%25" style="stop-color:%23ff9500;stop-opacity:0.8"/><stop offset="100%25" style="stop-color:%23ff6200;stop-opacity:1"/></radialGradient></defs><circle cx="50" cy="45" r="30" fill="url(%23playerGrad)" stroke="%23ffb347" stroke-width="3"/><circle cx="50" cy="45" r="26" fill="none" stroke="%23cc5200" stroke-width="2"/><text x="50" y="50" text-anchor="middle" font-size="24" font-weight="bold" fill="%23fff" style="text-shadow: 0 0 8px rgba(0,0,0,0.5)">P</text><text x="50" y="60" text-anchor="middle" font-size="8" fill="%23ffe4b5">PLAYER</text><path d="M 25 55 Q 20 65 15 75 L 20 78" stroke="%23ffb347" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M 75 55 Q 80 65 85 75 L 80 78" stroke="%23ffb347" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M 20 35 Q 10 30 5 30" stroke="%23ffb347" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="5" cy="30" r="6" fill="%23ffb347"/><path d="M 80 35 Q 85 25 90 20" stroke="%23ffb347" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="92" cy="18" r="5" fill="%23ffb347"/><path d="M 88 15 L 94 18 L 90 22" stroke="none" fill="%23fff"/></svg>');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            box-shadow: 0 0 20px rgba(255,149,0,0.8);
+            transition: none;
+            animation: playerBounce 0.8s ease-in-out infinite;
+            z-index: 10;
+        }
+
+        #player:before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, transparent 40%, rgba(255,149,0,0.2) 70%);
+            pointer-events: none;
+        }
+
+        @keyframes playerBounce { 0%,100% {transform:translateY(0) scaleY(1);} 50% {transform:translateY(-3px) scaleY(0.95);} }
+
+        /* ===================== */
+        /*  COINS                */
+        /* ===================== */
+        .coin {
+            position: absolute;
+            width: clamp(35px, 8vw, 50px);
+            height: clamp(35px, 8vw, 50px);
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            animation: float 2s ease-in-out infinite;
+            cursor: pointer;
+            z-index: 5;
+            filter: drop-shadow(0 0 8px rgba(0,229,255,0.6));
+        }
+        .coin-type-1 { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><radialGradient id="grad1" cx="50%25" cy="30%25" r="50%25"><stop offset="0%25" style="stop-color:%2300e5ff;stop-opacity:0.3"/><stop offset="100%25" style="stop-color:%23004d6b;stop-opacity:1"/></radialGradient></defs><circle cx="60" cy="60" r="40" fill="url(%23grad1)" stroke="%2300bcd4" stroke-width="4"/><circle cx="60" cy="60" r="35" fill="none" stroke="%23006d8c" stroke-width="2"/><text x="60" y="65" text-anchor="middle" font-size="32" font-weight="bold" fill="%2300e5ff" style="text-shadow: 0 0 8px rgba(0,229,255,0.8)">Z</text><text x="60" y="78" text-anchor="middle" font-size="10" fill="%2300bcd4">COIN</text><path d="M 30 40 Q 20 25 25 15" stroke="%2300bcd4" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M 90 40 Q 100 25 95 15" stroke="%2300bcd4" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="20" cy="12" r="8" fill="%2300e5ff"/><circle cx="100" cy="12" r="8" fill="%2300e5ff"/><path d="M 40 20 L 40 15 M 60 10 L 60 5 M 80 20 L 80 15" stroke="%2300bcd4" stroke-width="2" stroke-linecap="round"/></svg>'); }
+        .coin-type-2 { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><radialGradient id="grad2" cx="50%25" cy="30%25" r="60%25"><stop offset="0%25" style="stop-color:%2300e5ff;stop-opacity:0.4"/><stop offset="100%25" style="stop-color:%23003d5b;stop-opacity:1"/></radialGradient></defs><circle cx="50" cy="50" r="45" fill="url(%23grad2)" stroke="%2300bcd4" stroke-width="4"/><circle cx="50" cy="50" r="42" fill="none" stroke="%2300a5c4" stroke-width="2"/><circle cx="50" cy="50" r="38" fill="none" stroke="%23006d8c" stroke-width="1.5"/><text x="50" y="58" text-anchor="middle" font-size="36" font-weight="bold" fill="%2300e5ff" style="text-shadow: 0 0 10px rgba(0,229,255,0.8)">Z</text><text x="50" y="72" text-anchor="middle" font-size="11" fill="%2300bcd4" font-weight="bold">COIN</text></svg>'); animation: float 1.5s ease-in-out infinite, rotate 3s linear infinite; }
+        .coin-type-3 { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 100"><defs><radialGradient id="grad3" cx="50%25" cy="30%25" r="50%25"><stop offset="0%25" style="stop-color:%2300e5ff;stop-opacity:0.3"/><stop offset="100%25" style="stop-color:%23004d6b;stop-opacity:1"/></radialGradient></defs><ellipse cx="70" cy="45" rx="35" ry="35" fill="url(%23grad3)" stroke="%2300bcd4" stroke-width="4"/><ellipse cx="70" cy="45" rx="30" ry="30" fill="none" stroke="%23006d8c" stroke-width="2"/><text x="70" y="52" text-anchor="middle" font-size="28" font-weight="bold" fill="%2300e5ff" style="text-shadow: 0 0 8px rgba(0,229,255,0.8)">Z</text><text x="70" y="63" text-anchor="middle" font-size="9" fill="%2300bcd4">COIN</text><path d="M 30 55 Q 25 65 20 75 L 25 80" stroke="%2300bcd4" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M 110 55 Q 115 65 120 75 L 115 80" stroke="%2300bcd4" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M 20 30 Q 10 25 5 25" stroke="%2300bcd4" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M 120 30 Q 130 25 135 25" stroke="%2300bcd4" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="5" cy="25" r="6" fill="%2300e5ff"/><circle cx="135" cy="25" r="6" fill="%2300e5ff"/><path d="M 15 15 L 10 12 M 25 10 L 20 7 M 125 15 L 130 12 M 115 10 L 120 7" stroke="%2300bcd4" stroke-width="2" stroke-linecap="round"/></svg>'); width: clamp(50px, 12vw, 70px); height: clamp(35px, 8vw, 50px); animation: float 1s ease-in-out infinite, wiggle 0.5s ease-in-out infinite; }
+        @keyframes wiggle { 0%,100% {transform:translateX(0) rotate(-5deg);} 50% {transform:translateX(5px) rotate(5deg);} }
+        @keyframes float { 0%,100% {transform:translateY(0);} 50% {transform:translateY(-10px);} }
+        @keyframes rotate { from {transform:rotate(0deg);} to {transform:rotate(360deg);} }
+
+        /* ===================== */
+        /*  HUD                  */
+        /* ===================== */
+        #score, #timer, #combo {
+            position: absolute;
+            color: #00bcd4;
+            font-size: clamp(18px, 4vw, 24px);
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0,188,212,0.8);
+            z-index: 11;
+        }
+        #score { top: 20px; left: 20px; }
+        #timer { top: 20px; right: 20px; }
+        #combo { top: 60px; left: 20px; color: #ffeb3b; font-size: clamp(14px, 3.5vw, 18px); text-shadow: 0 0 10px rgba(255,235,59,0.8); display: none; }
+
+        /* ===================== */
+        /*  TOUCH CONTROLS       */
+        /* ===================== */
+        #touchControls {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            z-index: 15;
+        }
+
+        @media (max-width: 768px) {
+            #touchControls {
+                display: block;
+            }
+        }
+
+        #joystick {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            background: rgba(0, 188, 212, 0.2);
+            border: 3px solid rgba(0, 188, 212, 0.5);
+            border-radius: 50%;
+            touch-action: none;
+        }
+
+        #joystickKnob {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #00e5ff 0%, #00bcd4 100%);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+            pointer-events: none;
+        }
+
+        /* ===================== */
+        /*  GAME OVER SCREEN     */
+        /* ===================== */
+        #gameOver {
+            position: absolute;
+            inset: 20px;
+            background: rgba(0, 30, 60, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: #00bcd4;
+            display: none;
+            border: 3px solid #00bcd4;
+            box-shadow: 0 0 30px rgba(0, 188, 212, 0.8);
+            z-index: 20;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 768px) {
+            #gameOver {
+                inset: 0;
+                border-radius: 0;
+                border: none;
+                padding: 20px;
+            }
+        }
+
+        #gameOver h2 { 
+            margin: 0 0 20px; 
+            font-size: clamp(28px, 7vw, 36px); 
+            text-shadow: 0 0 20px rgba(0,188,212,1); 
+        }
+        #gameOver p { 
+            font-size: clamp(20px, 5vw, 24px); 
+            margin: 10px 0; 
+        }
+        #restartBtn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: clamp(18px, 4.5vw, 20px);
+            background: #00bcd4;
+            color: #001e3c;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            touch-action: manipulation;
+        }
+        #restartBtn:active { 
+            background: #00e5ff; 
+            box-shadow: 0 0 20px rgba(0,229,255,0.8); 
+            transform: scale(0.95); 
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: rgba(0, 188, 212, 0.2);
+            color: #00bcd4;
+            border: 2px solid #00bcd4;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn.active {
+            background: #00bcd4;
+            color: #001e3c;
+            font-weight: bold;
+        }
+        
+        .tab-btn:hover:not(.active) {
+            background: rgba(0, 188, 212, 0.3);
+        }
+
+        #uploadStatus {
+            margin: 15px 0;
+            font-size: 16px;
+            color: #ffeb3b;
+            text-shadow: 0 0 10px rgba(255, 235, 59, 0.8);
+        }
+
+        /* ===================== */
+        /*  PARTICLES            */
+        /* ===================== */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00e5ff;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle 0.5s ease-out forwards;
+        }
+        @keyframes particle { to { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; } }
+
+        /* ===================== */
+        /*  OBSTACLES            */
+        /* ===================== */
+        .obstacle {
+            position: absolute;
+            z-index: 8;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+        }
+        
+        /* Visual container for animations */
+        .obstacle-visual {
+            width: 100%;
+            height: 100%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        /* Dark matter wall - 暗黒物質の壁 */
+        .obstacle-wall { 
+            width: clamp(200px, 40vw, 300px); 
+            height: clamp(30px, 6vw, 40px); 
+        }
+        
+        .obstacle-wall .obstacle-visual {
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(75, 0, 130, 0.3) 10%,
+                rgba(75, 0, 130, 0.8) 50%,
+                rgba(75, 0, 130, 0.3) 90%,
+                transparent 100%
+            );
+            border: 2px solid rgba(200, 150, 255, 0.8);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 30px rgba(138, 43, 226, 0.6),
+                inset 0 0 20px rgba(75, 0, 130, 0.8),
+                0 0 50px rgba(138, 43, 226, 0.3),
+                0 0 5px rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Black hole - ブラックホール */
+        .obstacle-block { 
+            width: clamp(120px, 24vw, 180px); 
+            height: clamp(120px, 24vw, 180px); 
+        }
+        
+        .obstacle-block .obstacle-visual {
+            border-radius: 50%;
+            background: radial-gradient(circle at center,
+                #000000 0%,
+                #1a0033 30%,
+                #2d004d 50%,
+                transparent 70%
+            );
+            border: 3px solid rgba(147, 51, 234, 0.9);
+            box-shadow: 
+                0 0 60px rgba(75, 0, 130, 0.8),
+                inset 0 0 40px #000,
+                0 0 100px rgba(138, 43, 226, 0.4),
+                0 0 10px rgba(255, 255, 255, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .obstacle-block .obstacle-visual::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: conic-gradient(from 0deg,
+                transparent 0deg,
+                rgba(138, 43, 226, 0.2) 60deg,
+                transparent 120deg,
+                rgba(138, 43, 226, 0.2) 180deg,
+                transparent 240deg,
+                rgba(138, 43, 226, 0.2) 300deg,
+                transparent 360deg
+            );
+            animation: rotate 4s linear infinite;
+        }
+        
+        .obstacle-block .obstacle-visual::after {
+            content: '';
+            position: absolute;
+            width: 30%;
+            height: 30%;
+            background: #000;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: inset 0 0 20px #000;
+        }
+        
+        /* Meteor - 隕石 */
+        .obstacle-spike { 
+            width: clamp(100px, 20vw, 150px); 
+            height: clamp(90px, 18vw, 130px); 
+        }
+        
+        .obstacle-spike .obstacle-visual {
+            background: radial-gradient(ellipse at 30% 30%,
+                #6a7585 0%,
+                #4a5568 40%,
+                #2d3748 80%
+            );
+            border: 2px solid rgba(180, 180, 200, 0.8);
+            border-radius: 40% 60% 50% 50%;
+            box-shadow: 
+                inset -10px -10px 20px rgba(0, 0, 0, 0.5),
+                inset 5px 5px 10px rgba(255, 255, 255, 0.1),
+                0 0 30px rgba(147, 51, 234, 0.4),
+                0 0 50px rgba(147, 51, 234, 0.2),
+                0 0 8px rgba(255, 255, 255, 0.4);
+            position: relative;
+            transform: rotate(25deg);
+            animation: meteorfloat 3s ease-in-out infinite;
+        }
+        
+        .obstacle-spike .obstacle-visual::before {
+            content: '';
+            position: absolute;
+            width: 15%;
+            height: 15%;
+            background: #1a202c;
+            border-radius: 50%;
+            top: 20%;
+            left: 25%;
+            box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .obstacle-spike .obstacle-visual::after {
+            content: '';
+            position: absolute;
+            width: 10%;
+            height: 10%;
+            background: #2d3748;
+            border-radius: 50%;
+            bottom: 30%;
+            right: 20%;
+            box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.6);
+        }
+        
+        /* Moving obstacles */
+        .obstacle-moving .obstacle-visual {
+            animation: moveHorizontal 4s ease-in-out infinite, pulse 2s ease-in-out infinite;
+        }
+        
+        .obstacle-moving.obstacle-spike .obstacle-visual {
+            animation: moveHorizontal 4s ease-in-out infinite, meteorfloat 3s ease-in-out infinite;
+        }
+        
+        /* Spawn animation */
+        .obstacle-spawning .obstacle-visual {
+            animation: spawnIn 0.5s ease-out forwards;
+        }
+        
+        @keyframes spawnIn {
+            0% {
+                transform: scale(0) rotate(180deg);
+                opacity: 0;
+                filter: drop-shadow(0 0 30px rgba(147, 51, 234, 1));
+            }
+            50% {
+                transform: scale(1.2) rotate(90deg);
+                opacity: 0.8;
+                filter: drop-shadow(0 0 20px rgba(147, 51, 234, 0.8));
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+                filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+            }
+        }
+        
+        /* Despawn animation */
+        .obstacle-despawning .obstacle-visual {
+            animation: despawnOut 0.8s ease-in forwards;
+        }
+        
+        @keyframes despawnOut {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+                filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+            }
+            50% {
+                transform: scale(1.1) rotate(180deg);
+                opacity: 0.8;
+                filter: drop-shadow(0 0 25px rgba(147, 51, 234, 1));
+            }
+            100% {
+                transform: scale(0) rotate(360deg);
+                opacity: 0;
+                filter: drop-shadow(0 0 40px rgba(147, 51, 234, 0));
+            }
+        }
+        
+        @keyframes meteorfloat {
+            0%, 100% { transform: rotate(25deg) translateY(0); }
+            50% { transform: rotate(25deg) translateY(-5px); }
+        }
+        
+        @keyframes pulse { 
+            0%, 100% { 
+                opacity: 0.9;
+                filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+            } 
+            50% { 
+                opacity: 1;
+                filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
+            } 
+        }
+        
+        .warning { 
+            position: absolute; 
+            background: radial-gradient(ellipse at center,
+                rgba(138, 43, 226, 0.2) 0%,
+                rgba(138, 43, 226, 0.1) 50%,
+                transparent 70%
+            );
+            border: 3px solid rgba(200, 150, 255, 0.6);
+            border-radius: 10px; 
+            animation: warningPulse 0.5s ease-in-out infinite; 
+            pointer-events: none; 
+        }
+        
+        @keyframes warningPulse { 
+            0%, 100% { 
+                opacity: 0.3; 
+                box-shadow: 
+                    0 0 20px rgba(138, 43, 226, 0.3),
+                    inset 0 0 20px rgba(138, 43, 226, 0.2);
+                transform: scale(1);
+            } 
+            50% { 
+                opacity: 0.8; 
+                box-shadow: 
+                    0 0 40px rgba(138, 43, 226, 0.8),
+                    inset 0 0 30px rgba(138, 43, 226, 0.4);
+                transform: scale(1.05);
+            } 
+        }
+        
+        @keyframes moveHorizontal { 
+            0%, 100% { transform: translateX(0); } 
+            50% { transform: translateX(100px); } 
+        }
+
+        /* ===================== */
+        /*  BONUS TEXT           */
+        /* ===================== */
+        .bonus-text {
+            position: absolute;
+            color: #ffeb3b;
+            font-weight: bold;
+            font-size: clamp(16px, 4vw, 20px);
+            text-shadow: 0 0 10px rgba(255, 235, 59, 0.8);
+            pointer-events: none;
+            animation: bonusFloat 1s ease-out forwards;
+            z-index: 12;
+        }
+        @keyframes bonusFloat { 
+            0% { opacity:1; transform:translateY(0); } 
+            100% { opacity:0; transform:translateY(-40px); } 
+        }
+
+        /* ===================== */
+        /*  MOBILE OPTIMIZATIONS */
+        /* ===================== */
+        @media (max-width: 768px) and (orientation: landscape) {
+            #touchControls {
+                bottom: 20px;
+            }
+            #joystick {
+                width: 100px;
+                height: 100px;
+            }
+            #joystickKnob {
+                width: 40px;
+                height: 40px;
+            }
+            #score, #timer {
+                top: 10px;
+            }
+            #combo {
+                top: 40px;
+            }
+        }
+
+        @media (max-height: 500px) {
+            #touchControls {
+                bottom: 15px;
+            }
+            #joystick {
+                width: 90px;
+                height: 90px;
+            }
+            #joystickKnob {
+                width: 35px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- Start Menu -->
+        <div id="startMenu">
+            <h1>Z coin collector</h1>
+            <h3 style="color: #ffeb3b; margin: 10px 0;">🌐 Online Ranking</h3>
+            
+            <div id="scoreStats" style="margin: 10px 0; color: #00e5ff; font-size: 16px; text-align: center;">
+                <p id="bestScoreDisplay" style="margin: 5px 0;">Best Score: 0</p>
+                <p id="totalScoreDisplay" style="margin: 5px 0;">Total Score: 0</p>
+            </div>
+            
+            <div id="onlineRanking">
+                <h3>🏆 Top 10 Players</h3>
+                <div id="loadingRanking">Loading rankings...</div>
+                <div id="rankingList"></div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button class="menu-btn" id="startBtn">Start Game</button>
+                <button class="menu-btn" id="rankingBtn">Full Ranking</button>
+            </div>
+            
+            <p style="color: #00bcd4; margin-top: 15px; font-size: 14px; text-align: center;">
+                PC💻: ⬅️⬆️⬇️➡️ (Use arrow keys)<br>
+                Mobile📱: 🎮 (Use joystick)
+            </p>
+        </div>
+
+        <!-- Ranking Screen -->
+        <div id="rankingScreen">
+            <h2>🏆 World Ranking 🏆</h2>
+            <div style="display: flex; gap: 10px; justify-content: center; margin: 15px 0;">
+                <button class="tab-btn active" id="singleScoreTab">Single Score</button>
+                <button class="tab-btn" id="totalScoreTab">Total Score</button>
+            </div>
+            <div id="fullRankingList"></div>
+            <button class="menu-btn" id="backToMenuBtn">Back to Menu</button>
+        </div>
+
+        <!-- HUD & Game Objects -->
+        <div id="score">score: 0</div>
+        <div id="timer">time: 30</div>
+        <div id="combo">combo: x1</div>
+        <div id="player"></div>
+
+        <!-- Touch Controls -->
+        <div id="touchControls">
+            <div id="joystick">
+                <div id="joystickKnob"></div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOver">
+            <h2>game over！</h2>
+            <p id="finalScore">score: 0</p>
+            <p id="coinsCollected">coins: 0</p>
+            <p id="bestScoreResult" style="color: #ffeb3b; font-size: 22px; margin: 10px 0;">best score: 0</p>
+            <p id="totalScoreResult" style="color: #00e5ff; font-size: 20px; margin: 10px 0;">total score: 0</p>
+            
+            <div id="nameInputSection" style="margin: 20px 0; display: none;">
+                <p style="color: #00bcd4; margin-bottom: 10px;">Enter your name for ranking:</p>
+                <input type="text" id="gameOverNameInput" placeholder="Enter your name" maxlength="20" 
+                       style="padding: 12px 20px; font-size: 18px; background: rgba(0, 188, 212, 0.1); 
+                              color: #00e5ff; border: 2px solid #00bcd4; border-radius: 8px; 
+                              text-align: center; width: 250px; max-width: 80%;">
+                <button id="submitScoreBtn" class="menu-btn" style="margin-top: 10px; padding: 10px 20px; font-size: 16px;">Submit Score</button>
+            </div>
+            
+            <div id="uploadStatus"></div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                <button id="restartBtn" class="menu-btn">Retry</button>
+                <button id="gameOverRankingBtn" class="menu-btn" style="background: #ffeb3b; color: #333;">Full Ranking</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================
+        // Firebase Configuration
+        // =====================
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+    apiKey: "AIzaSyDN3bF_FpoC0Wi73jTWyHugrrZS07PB6w8",
+    authDomain: "z-coin-games.firebaseapp.com",
+    databaseURL: "https://z-coin-games-default-rtdb.firebaseio.com",
+    projectId: "z-coin-games",
+    storageBucket: "z-coin-games.firebasestorage.app",
+    messagingSenderId: "718699349808",
+    appId: "1:718699349808:web:169596e0a88fef3473aaf5",
+    measurementId: "G-HFT40LPNDF"
+    };
+        // Initialize Firebase
+        let database;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            database = null;
+        }
+
+        const gameContainer = document.getElementById('gameContainer');
+        const startMenu      = document.getElementById('startMenu');
+        const startBtn       = document.getElementById('startBtn');
+        const player         = document.getElementById('player');
+        const scoreDisplay   = document.getElementById('score');
+        const timerDisplay   = document.getElementById('timer');
+        const comboDisplay   = document.getElementById('combo');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreDisplay   = document.getElementById('finalScore');
+        const coinsCollectedDisplay = document.getElementById('coinsCollected');
+        const restartBtn     = document.getElementById('restartBtn');
+        const joystick       = document.getElementById('joystick');
+        const joystickKnob   = document.getElementById('joystickKnob');
+        const rankingScreen = document.getElementById('rankingScreen');
+        const rankingBtn = document.getElementById('rankingBtn');
+        const backToMenuBtn = document.getElementById('backToMenuBtn');
+        const gameOverNameInput = document.getElementById('gameOverNameInput');
+        const submitScoreBtn = document.getElementById('submitScoreBtn');
+        const nameInputSection = document.getElementById('nameInputSection');
+        const gameOverRankingBtn = document.getElementById('gameOverRankingBtn');
+        const singleScoreTab = document.getElementById('singleScoreTab');
+        const totalScoreTab = document.getElementById('totalScoreTab');
+
+        let playerX = 0;
+        let playerY = 0;
+        let playerSize = 60;
+        let score = 0;
+        let timeLeft = 30;
+        let gameRunning = false;
+        let coins = [];
+        let obstacles = [];
+        let coinsCollected = 0;
+        let combo = 1;
+        let lastCoinTime = Date.now();
+        let timerInterval, coinSpawnInterval, obstacleSpawnInterval;
+        let bonusTimeInterval;
+        let playerName = '';
+        let currentGameScore = 0; // Store current game score temporarily
+        
+        // Score data storage
+        let bestScore = 0;
+        let totalScore = 0;
+        let currentRankingView = 'single'; // 'single' or 'total'
+        let deviceId = ''; // Unique device identifier
+        let previousTotalRankingName = ''; // Track previous name used for total ranking
+
+        const keys = {};
+        let joystickActive = false;
+        let joystickDeltaX = 0;
+        let joystickDeltaY = 0;
+
+        /* ===================== */
+        /*  ONLINE RANKING       */
+        /* ===================== */
+        function loadOnlineRanking() {
+            if (!database) {
+                document.getElementById('loadingRanking').textContent = 'Offline mode';
+                return;
+            }
+
+            const rankingRef = database.ref('rankings');
+            rankingRef.orderByChild('score').limitToLast(10).once('value', (snapshot) => {
+                const rankings = [];
+                snapshot.forEach((child) => {
+                    rankings.push({
+                        name: child.val().name,
+                        score: child.val().score,
+                        timestamp: child.val().timestamp
+                    });
+                });
+                
+                rankings.sort((a, b) => b.score - a.score);
+                displayRanking(rankings);
+            }).catch(error => {
+                console.error("Error loading rankings:", error);
+                document.getElementById('loadingRanking').textContent = 'Failed to load rankings';
+            });
+        }
+        
+        function loadTotalScoreRanking(callback) {
+            if (!database) {
+                if (callback) callback([]);
+                return;
+            }
+            
+            const totalRankingRef = database.ref('totalRankings');
+            totalRankingRef.orderByChild('totalScore').limitToLast(50).once('value', (snapshot) => {
+                const rankings = [];
+                snapshot.forEach((child) => {
+                    rankings.push({
+                        name: child.key,
+                        totalScore: child.val().totalScore,
+                        bestScore: child.val().bestScore,
+                        lastUpdate: child.val().lastUpdate
+                    });
+                });
+                
+                rankings.sort((a, b) => b.totalScore - a.totalScore);
+                if (callback) callback(rankings);
+            }).catch(error => {
+                console.error("Error loading total rankings:", error);
+                if (callback) callback([]);
+            });
+        }
+
+        function displayRanking(rankings) {
+            const rankingList = document.getElementById('rankingList');
+            const loadingElement = document.getElementById('loadingRanking');
+            
+            if (rankings.length === 0) {
+                loadingElement.textContent = 'No rankings yet. Be the first!';
+                return;
+            }
+            
+            loadingElement.style.display = 'none';
+            rankingList.innerHTML = '';
+            
+            rankings.forEach((entry, index) => {
+                const rankItem = document.createElement('div');
+                rankItem.className = 'ranking-item';
+                
+                if (index === 0) rankItem.classList.add('top1');
+                else if (index === 1) rankItem.classList.add('top2');
+                else if (index === 2) rankItem.classList.add('top3');
+                
+                if (entry.name === playerName && playerName !== '') {
+                    rankItem.classList.add('current-player');
+                }
+                
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                
+                rankItem.innerHTML = `
+                    <span class="rank-number">${medal || '#' + (index + 1)}</span>
+                    <span class="rank-name">${entry.name}</span>
+                    <span class="rank-score">${entry.score}</span>
+                `;
+                
+                rankingList.appendChild(rankItem);
+            });
+        }
+
+        function loadFullRanking() {
+            if (currentRankingView === 'single') {
+                if (!database) {
+                    document.getElementById('fullRankingList').innerHTML = '<p style="color: #00bcd4;">Offline mode - Rankings unavailable</p>';
+                    return;
+                }
+
+                const rankingRef = database.ref('rankings');
+                rankingRef.orderByChild('score').limitToLast(50).once('value', (snapshot) => {
+                    const rankings = [];
+                    snapshot.forEach((child) => {
+                        rankings.push({
+                            name: child.val().name,
+                            score: child.val().score,
+                            timestamp: child.val().timestamp
+                        });
+                    });
+                    
+                    rankings.sort((a, b) => b.score - a.score);
+                    displayFullRanking(rankings);
+                }).catch(error => {
+                    console.error("Error loading full rankings:", error);
+                    document.getElementById('fullRankingList').innerHTML = '<p style="color: #ff6b6b;">Failed to load rankings</p>';
+                });
+            } else {
+                loadTotalScoreRanking((rankings) => {
+                    displayFullTotalRanking(rankings);
+                });
+            }
+        }
+
+        function displayFullRanking(rankings) {
+            const fullRankingList = document.getElementById('fullRankingList');
+            fullRankingList.innerHTML = '';
+            
+            if (rankings.length === 0) {
+                fullRankingList.innerHTML = '<p style="color: #00bcd4;">No rankings yet. Be the first!</p>';
+                return;
+            }
+            
+            rankings.forEach((entry, index) => {
+                const rankItem = document.createElement('div');
+                rankItem.className = 'ranking-item';
+                
+                if (index === 0) rankItem.classList.add('top1');
+                else if (index === 1) rankItem.classList.add('top2');
+                else if (index === 2) rankItem.classList.add('top3');
+                
+                if (entry.name === playerName && playerName !== '') {
+                    rankItem.classList.add('current-player');
+                }
+                
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                
+                rankItem.innerHTML = `
+                    <span class="rank-number">${medal || '#' + (index + 1)}</span>
+                    <span class="rank-name">${entry.name}</span>
+                    <span class="rank-score">${entry.score}</span>
+                `;
+                
+                fullRankingList.appendChild(rankItem);
+            });
+        }
+        
+        function displayFullTotalRanking(rankings) {
+            const fullRankingList = document.getElementById('fullRankingList');
+            fullRankingList.innerHTML = '';
+            
+            if (rankings.length === 0) {
+                fullRankingList.innerHTML = '<p style="color: #00bcd4;">No total score rankings yet. Play more!</p>';
+                return;
+            }
+            
+            rankings.forEach((entry, index) => {
+                const rankItem = document.createElement('div');
+                rankItem.className = 'ranking-item';
+                
+                if (index === 0) rankItem.classList.add('top1');
+                else if (index === 1) rankItem.classList.add('top2');
+                else if (index === 2) rankItem.classList.add('top3');
+                
+                if (entry.name === playerName && playerName !== '') {
+                    rankItem.classList.add('current-player');
+                }
+                
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                
+                rankItem.innerHTML = `
+                    <span class="rank-number">${medal || '#' + (index + 1)}</span>
+                    <span class="rank-name">${entry.name}</span>
+                    <span class="rank-score" title="Best: ${entry.bestScore}">Total: ${entry.totalScore}</span>
+                `;
+                
+                fullRankingList.appendChild(rankItem);
+            });
+        }
+
+        function uploadScore(name, scoreValue) {
+            if (!database || !name || scoreValue === 0) {
+                document.getElementById('uploadStatus').textContent = 'Score not uploaded (offline or no name)';
+                return;
+            }
+
+            const uploadStatus = document.getElementById('uploadStatus');
+            uploadStatus.textContent = 'Uploading score...';
+            
+            // Upload single score
+            const newScoreRef = database.ref('rankings').push();
+            newScoreRef.set({
+                name: name,
+                score: scoreValue,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                // First, remove previous total ranking entry if name changed
+                const deletePromise = previousTotalRankingName && previousTotalRankingName !== name
+                    ? database.ref('totalRankings/' + previousTotalRankingName).remove()
+                    : Promise.resolve();
+                
+                return deletePromise.then(() => {
+                    // Update total score ranking with device tracking
+                    const totalRankingRef = database.ref('totalRankings/' + name);
+                    
+                    // Store deviceId with the ranking to track same user
+                    return totalRankingRef.set({
+                        totalScore: totalScore,  // Use the local totalScore that includes all games
+                        bestScore: bestScore,    // Use the local bestScore
+                        deviceId: deviceId,      // Track device to prevent duplicates
+                        lastUpdate: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }).then(() => {
+                    // Save the current name as previous name for future reference
+                    localStorage.setItem('zCoinCollectorPreviousRankingName', name);
+                    previousTotalRankingName = name;
+                    
+                    uploadStatus.textContent = '✅ Score uploaded to world ranking!';
+                    loadOnlineRanking(); // Reload rankings
+                });
+            }).catch((error) => {
+                console.error("Error uploading score:", error);
+                uploadStatus.textContent = '❌ Failed to upload score';
+            });
+        }
+
+        /* ===================== */
+        /*  SCORE STORAGE        */
+        /* ===================== */
+        function loadScoreData() {
+            const savedData = localStorage.getItem('zCoinCollectorScores');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                bestScore = data.bestScore || 0;
+                totalScore = data.totalScore || 0;
+            }
+            
+            // Load saved player name
+            const savedName = localStorage.getItem('zCoinCollectorPlayerName');
+            if (savedName) {
+                playerName = savedName;
+                if (gameOverNameInput) {
+                    gameOverNameInput.value = savedName;
+                }
+            }
+            
+            // Load or generate device ID
+            deviceId = localStorage.getItem('zCoinCollectorDeviceId');
+            if (!deviceId) {
+                // Generate a unique device ID
+                deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('zCoinCollectorDeviceId', deviceId);
+            }
+            
+            // Load previous total ranking name
+            previousTotalRankingName = localStorage.getItem('zCoinCollectorPreviousRankingName') || '';
+        }
+        
+        function saveScoreData() {
+            const data = {
+                bestScore: bestScore,
+                totalScore: totalScore
+            };
+            localStorage.setItem('zCoinCollectorScores', JSON.stringify(data));
+        }
+        
+        function updateScoreData(newScore) {
+            totalScore += newScore;
+            if (newScore > bestScore) {
+                bestScore = newScore;
+            }
+            saveScoreData();
+        }
+
+        /* ===================== */
+        /*  RESPONSIVE SIZING    */
+        /* ===================== */
+        function updateSizes() {
+            const containerWidth = gameContainer.offsetWidth;
+            const containerHeight = gameContainer.offsetHeight;
+            
+            // Update player size based on screen size
+            if (containerWidth < 600) {
+                playerSize = 40;
+            } else {
+                playerSize = 60;
+            }
+            
+            // Center player at start
+            playerX = (containerWidth - playerSize) / 2;
+            playerY = (containerHeight - playerSize) / 2;
+        }
+
+        /* ===================== */
+        /*  GAME CONTROL         */
+        /* ===================== */
+        function resetGameState() {
+            score = 0;
+            timeLeft = 30;
+            coinsCollected = 0;
+            combo = 1;
+            coins = [];
+            obstacles = [];
+            lastCoinTime = Date.now();
+            updateSizes();
+        }
+
+        function startGame() {
+            resetGameState();
+            gameRunning = true;
+            startMenu.style.display = 'none';
+            rankingScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            scoreDisplay.textContent = `score: ${score}`;
+            timerDisplay.textContent = `time: ${timeLeft}`;
+            comboDisplay.style.display = 'none';
+            player.style.left = playerX + 'px';
+            player.style.top = playerY + 'px';
+
+            // Remove existing objects
+            document.querySelectorAll('.coin').forEach(coin => coin.remove());
+            document.querySelectorAll('.obstacle').forEach(obstacle => obstacle.remove());
+            document.querySelectorAll('.warning').forEach(warning => warning.remove());
+
+            // Create starfield
+            createStars();
+
+            // Start loops
+            gameLoop();
+            timerInterval = setInterval(updateTimer, 1000);
+            coinSpawnInterval = setInterval(spawnCoin, 800);
+            setTimeout(() => {
+                if (gameRunning) {
+                    spawnObstacle();
+                    obstacleSpawnInterval = setInterval(spawnObstacle, 4000);
+                }
+            }, 3000);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            clearInterval(coinSpawnInterval);
+            clearInterval(obstacleSpawnInterval);
+            clearInterval(bonusTimeInterval);
+            // Clean up obstacles & warnings
+            document.querySelectorAll('.obstacle').forEach(obstacle => obstacle.remove());
+            document.querySelectorAll('.warning').forEach(warning => warning.remove());
+            obstacles = [];
+            
+            // Update score data
+            updateScoreData(score);
+            
+            // Display results
+            finalScoreDisplay.textContent = `score: ${score}`;
+            coinsCollectedDisplay.textContent = `coins: ${coinsCollected}`;
+            document.getElementById('bestScoreResult').textContent = `best score: ${bestScore}`;
+            document.getElementById('totalScoreResult').textContent = `total score: ${totalScore}`;
+            
+            // Show NEW RECORD if applicable
+            if (score === bestScore && score > 0) {
+                document.getElementById('bestScoreResult').innerHTML = `🏆 NEW RECORD: ${bestScore} 🏆`;
+                document.getElementById('bestScoreResult').style.animation = 'pulse 1s ease-in-out infinite';
+            }
+            
+            // Store current game score
+            currentGameScore = score;
+            
+            // Show name input section if score > 0 and not already submitted
+            if (score > 0) {
+                nameInputSection.style.display = 'block';
+                gameOverNameInput.value = playerName || '';
+                gameOverNameInput.focus();
+                submitScoreBtn.disabled = false; // Re-enable submit button
+            } else {
+                nameInputSection.style.display = 'none';
+            }
+            
+            gameOverScreen.style.display = 'block';
+            
+            // Reset timer display style
+            timerDisplay.style.color = '#00bcd4';
+            timerDisplay.style.animation = 'none';
+        }
+
+        /* ===================== */
+        /*  STARFIELD            */
+        /* ===================== */
+        function createStars() {
+            document.querySelectorAll('.star').forEach(star => star.remove());
+            const starCount = window.innerWidth < 768 ? 50 : 100;
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random();
+                if (size < 0.5) star.classList.add('small');
+                else if (size < 0.8) star.classList.add('medium');
+                else star.classList.add('large');
+                const x = Math.random() * 100;
+                const y = Math.random() * 70;
+                star.style.left = x + '%';
+                star.style.top = y + '%';
+                star.style.animationDelay = Math.random() * 4 + 's';
+                gameContainer.appendChild(star);
+            }
+        }
+
+        /* ===================== */
+        /*  TIMER & HUD          */
+        /* ===================== */
+        function updateTimer() {
+            timeLeft--;
+            timerDisplay.textContent = `time: ${timeLeft}`;
+            
+            // Last 10 seconds bonus time
+            if (timeLeft === 10) {
+                timerDisplay.style.color = '#ffeb3b';
+                timerDisplay.style.animation = 'pulse 1s ease-in-out infinite';
+                
+                // Increase coin spawn rate
+                clearInterval(coinSpawnInterval);
+                coinSpawnInterval = setInterval(spawnCoin, 300);
+                
+                // Bonus coin spawning
+                bonusTimeInterval = setInterval(() => {
+                    for (let i = 0; i < 2; i++) {
+                        setTimeout(() => spawnCoin(), i * 100);
+                    }
+                }, 600);
+                
+                // Increase obstacle spawn rate
+                clearInterval(obstacleSpawnInterval);
+                obstacleSpawnInterval = setInterval(spawnObstacle, 2500);
+            }
+            
+            if (timeLeft <= 0) endGame();
+        }
+
+        /* ===================== */
+        /*  COINS                */
+        /* ===================== */
+        function spawnCoin() {
+            if (!gameRunning) return;
+            const coin = document.createElement('div');
+            coin.className = 'coin';
+            const coinType = Math.random();
+            if (coinType < 0.5) { coin.classList.add('coin-type-1'); coin.dataset.value = 10; coin.title = '手を挙げて喜ぶZコイン'; }
+            else if (coinType < 0.8) { coin.classList.add('coin-type-2'); coin.dataset.value = 25; coin.title = '基本のZコイン'; }
+            else { coin.classList.add('coin-type-3'); coin.dataset.value = 50; coin.title = '走っているZコイン'; }
+            
+            const coinSize = window.innerWidth < 600 ? 35 : 50;
+            const x = Math.random() * (gameContainer.offsetWidth - coinSize);
+            const y = Math.random() * (gameContainer.offsetHeight - coinSize);
+            coin.style.left = x + 'px';
+            coin.style.top = y + 'px';
+            gameContainer.appendChild(coin);
+            coins.push(coin);
+            setTimeout(() => { if (coins.includes(coin) && coin.parentNode) { coin.remove(); coins = coins.filter(c => c !== coin); } }, 5000);
+        }
+
+        function checkCollision() {
+            coins.forEach((coin, idx) => {
+                const coinRect = coin.getBoundingClientRect();
+                const playerRect = player.getBoundingClientRect();
+                if (playerRect.left < coinRect.right && playerRect.right > coinRect.left && playerRect.top < coinRect.bottom && playerRect.bottom > coinRect.top) {
+                    collectCoin(coin, idx);
+                }
+            });
+        }
+
+        function collectCoin(coin, idx) {
+            const value = parseInt(coin.dataset.value);
+            const currentTime = Date.now();
+            if (currentTime - lastCoinTime < 1000) combo = Math.min(combo + 0.5, 5);
+            else combo = 1;
+            const points = Math.floor(value * combo);
+            score += points;
+            coinsCollected++;
+            lastCoinTime = currentTime;
+            scoreDisplay.textContent = `score: ${score}`;
+            if (combo > 1) { comboDisplay.textContent = `combo: x${combo.toFixed(1)}`; comboDisplay.style.display = 'block'; }
+            createParticles(coin);
+            if (combo > 1) showBonusText(coin, `+${points} x${combo.toFixed(1)}`);
+            coin.remove(); coins.splice(idx,1);
+        }
+
+        function createParticles(coin) {
+            const rect = coin.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            for (let i = 0; i < 10; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                const angle = (Math.PI * 2 * i) / 10;
+                const distance = 30 + Math.random() * 20;
+                particle.style.setProperty('--x', `${Math.cos(angle) * distance}px`);
+                particle.style.setProperty('--y', `${Math.sin(angle) * distance}px`);
+                particle.style.left = (rect.left - containerRect.left + rect.width / 2) + 'px';
+                particle.style.top  = (rect.top  - containerRect.top  + rect.height / 2) + 'px';
+                gameContainer.appendChild(particle);
+                setTimeout(() => particle.remove(), 500);
+            }
+        }
+
+        /* ===================== */
+        /*  OBSTACLES            */
+        /* ===================== */
+        function isOverlapping(x, y, width, height) {
+            // Check against existing obstacles
+            for (const obstacle of obstacles) {
+                const obstacleRect = obstacle.getBoundingClientRect();
+                const containerRect = gameContainer.getBoundingClientRect();
+                const obsX = parseFloat(obstacle.style.left);
+                const obsY = parseFloat(obstacle.style.top);
+                const obsWidth = obstacleRect.width;
+                const obsHeight = obstacleRect.height;
+                
+                // Add margin to prevent close spawning
+                const margin = 50;
+                if (x < obsX + obsWidth + margin &&
+                    x + width + margin > obsX &&
+                    y < obsY + obsHeight + margin &&
+                    y + height + margin > obsY) {
+                    return true;
+                }
+            }
+            
+            // Check against warnings
+            const warnings = document.querySelectorAll('.warning');
+            for (const warning of warnings) {
+                const warnX = parseFloat(warning.style.left);
+                const warnY = parseFloat(warning.style.top);
+                const warnWidth = parseFloat(warning.style.width);
+                const warnHeight = parseFloat(warning.style.height);
+                
+                const margin = 50;
+                if (x < warnX + warnWidth + margin &&
+                    x + width + margin > warnX &&
+                    y < warnY + warnHeight + margin &&
+                    y + height + margin > warnY) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        function spawnObstacle() {
+            if (!gameRunning) return;
+            const warning = document.createElement('div');
+            warning.className = 'warning';
+            const obstacleType = Math.random();
+            let x,y,width,height;
+            
+            const isMobile = window.innerWidth < 768;
+            if (obstacleType < 0.4) { 
+                width = isMobile ? 200 : 300; 
+                height = isMobile ? 30 : 40; 
+            }
+            else if (obstacleType < 0.7) { 
+                width = height = isMobile ? 120 : 180; 
+            }
+            else { 
+                width = isMobile ? 100 : 150; 
+                height = isMobile ? 90 : 130; 
+            }
+            
+            // Try to find non-overlapping position
+            let attempts = 0;
+            const maxAttempts = 20;
+            do {
+                x = Math.random() * (gameContainer.offsetWidth - width);
+                y = Math.random() * (gameContainer.offsetHeight - height);
+                attempts++;
+            } while (isOverlapping(x, y, width, height) && attempts < maxAttempts);
+            
+            // If couldn't find good position, skip this spawn
+            if (attempts >= maxAttempts) return;
+            
+            Object.assign(warning.style, { left: x + 'px', top: y + 'px', width: width + 'px', height: height + 'px' });
+            gameContainer.appendChild(warning);
+            setTimeout(() => {
+                if (!gameRunning) { warning.remove(); return; }
+                warning.remove();
+                const obstacle = document.createElement('div');
+                obstacle.className = 'obstacle obstacle-spawning';
+                if (obstacleType < 0.4) obstacle.classList.add('obstacle-wall');
+                else if (obstacleType < 0.7) obstacle.classList.add('obstacle-block');
+                else obstacle.classList.add('obstacle-spike');
+                if (Math.random() < 0.4) obstacle.classList.add('obstacle-moving');
+                Object.assign(obstacle.style, { left: x + 'px', top: y + 'px' });
+                
+                // Create inner visual element for animations
+                const visual = document.createElement('div');
+                visual.className = 'obstacle-visual';
+                obstacle.appendChild(visual);
+                
+                gameContainer.appendChild(obstacle);
+                obstacles.push(obstacle);
+                
+                // Remove spawn animation class after animation
+                setTimeout(() => {
+                    obstacle.classList.remove('obstacle-spawning');
+                }, 500);
+                
+                // Despawn with animation
+                setTimeout(() => { 
+                    if (obstacles.includes(obstacle) && obstacle.parentNode) { 
+                        obstacle.classList.add('obstacle-despawning');
+                        setTimeout(() => {
+                            obstacle.remove(); 
+                            obstacles = obstacles.filter(o => o !== obstacle);
+                        }, 800);
+                    } 
+                }, 9200);
+            }, 1000);
+        }
+
+        function checkObstacleCollision() {
+            const playerRect = player.getBoundingClientRect();
+            obstacles.forEach(obstacle => {
+                const obstacleRect = obstacle.getBoundingClientRect();
+                if (playerRect.left < obstacleRect.right && playerRect.right > obstacleRect.left && playerRect.top < obstacleRect.bottom && playerRect.bottom > obstacleRect.top) {
+                    const playerCenterX = playerX + playerSize / 2;
+                    const playerCenterY = playerY + playerSize / 2;
+                    const obstacleCenterX = parseFloat(obstacle.style.left) + obstacleRect.width / 2;
+                    const obstacleCenterY = parseFloat(obstacle.style.top) + obstacleRect.height / 2;
+                    const dx = playerCenterX - obstacleCenterX;
+                    const dy = playerCenterY - obstacleCenterY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance > 0) {
+                        const pushDistance = 10;
+                        playerX += (dx / distance) * pushDistance;
+                        playerY += (dy / distance) * pushDistance;
+                        playerX = Math.max(0, Math.min(gameContainer.offsetWidth - playerSize, playerX));
+                        playerY = Math.max(0, Math.min(gameContainer.offsetHeight - playerSize, playerY));
+                    }
+                }
+            });
+        }
+
+        /* ===================== */
+        /*  BONUS TEXT           */
+        /* ===================== */
+        function showBonusText(coin, text) {
+            const bonusText = document.createElement('div');
+            bonusText.className = 'bonus-text';
+            bonusText.textContent = text;
+            const rect = coin.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            bonusText.style.left = (rect.left - containerRect.left + rect.width / 2 - 50) + 'px';
+            bonusText.style.top  = (rect.top  - containerRect.top) + 'px';
+            gameContainer.appendChild(bonusText);
+            setTimeout(() => bonusText.remove(), 1000);
+        }
+
+        /* ===================== */
+        /*  TOUCH CONTROLS       */
+        /* ===================== */
+        function initTouchControls() {
+            let startX = 0;
+            let startY = 0;
+            
+            joystick.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                joystickActive = true;
+                const touch = e.touches[0];
+                const rect = joystick.getBoundingClientRect();
+                startX = touch.clientX - rect.left - rect.width / 2;
+                startY = touch.clientY - rect.top - rect.height / 2;
+            });
+            
+            joystick.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!joystickActive) return;
+                
+                const touch = e.touches[0];
+                const rect = joystick.getBoundingClientRect();
+                const x = touch.clientX - rect.left - rect.width / 2;
+                const y = touch.clientY - rect.top - rect.height / 2;
+                
+                const distance = Math.sqrt(x * x + y * y);
+                const maxDistance = rect.width / 2 - 25;
+                
+                if (distance > maxDistance) {
+                    joystickDeltaX = (x / distance) * maxDistance;
+                    joystickDeltaY = (y / distance) * maxDistance;
+                } else {
+                    joystickDeltaX = x;
+                    joystickDeltaY = y;
+                }
+                
+                joystickKnob.style.transform = `translate(calc(-50% + ${joystickDeltaX}px), calc(-50% + ${joystickDeltaY}px))`;
+            });
+            
+            joystick.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                joystickActive = false;
+                joystickDeltaX = 0;
+                joystickDeltaY = 0;
+                joystickKnob.style.transform = 'translate(-50%, -50%)';
+            });
+        }
+
+        /* ===================== */
+        /*  GAME LOOP            */
+        /* ===================== */
+        function gameLoop() {
+            if (!gameRunning) return;
+            const speed = 8;
+            
+            // Keyboard controls
+            if (keys['ArrowLeft'] && playerX > 0) playerX -= speed;
+            if (keys['ArrowRight'] && playerX < gameContainer.offsetWidth - playerSize) playerX += speed;
+            if (keys['ArrowUp'] && playerY > 0) playerY -= speed;
+            if (keys['ArrowDown'] && playerY < gameContainer.offsetHeight - playerSize) playerY += speed;
+            
+            // Touch controls
+            if (joystickActive || (joystickDeltaX !== 0 || joystickDeltaY !== 0)) {
+                const moveX = (joystickDeltaX / 50) * speed;
+                const moveY = (joystickDeltaY / 50) * speed;
+                playerX += moveX;
+                playerY += moveY;
+                playerX = Math.max(0, Math.min(gameContainer.offsetWidth - playerSize, playerX));
+                playerY = Math.max(0, Math.min(gameContainer.offsetHeight - playerSize, playerY));
+            }
+            
+            checkObstacleCollision();
+            player.style.left = playerX + 'px';
+            player.style.top  = playerY + 'px';
+            checkCollision();
+            requestAnimationFrame(gameLoop);
+        }
+
+        /* ===================== */
+        /*  INPUT HANDLING       */
+        /* ===================== */
+        document.addEventListener('keydown', e => keys[e.key] = true);
+        document.addEventListener('keyup',   e => keys[e.key] = false);
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', () => {
+            gameOverScreen.style.display = 'none';
+            startGame();
+        });
+        
+        submitScoreBtn.addEventListener('click', () => {
+            const name = gameOverNameInput.value.trim() || 'Anonymous';
+            playerName = name;
+            localStorage.setItem('zCoinCollectorPlayerName', name);
+            uploadScore(name, currentGameScore);
+            submitScoreBtn.disabled = true;
+            nameInputSection.style.display = 'none';
+        });
+        
+        gameOverRankingBtn.addEventListener('click', () => {
+            rankingScreen.style.display = 'flex';
+            currentRankingView = 'single';
+            singleScoreTab.classList.add('active');
+            totalScoreTab.classList.remove('active');
+            loadFullRanking();
+        });
+        
+        rankingBtn.addEventListener('click', () => {
+            startMenu.style.display = 'none';
+            rankingScreen.style.display = 'flex';
+            currentRankingView = 'single';
+            singleScoreTab.classList.add('active');
+            totalScoreTab.classList.remove('active');
+            loadFullRanking();
+        });
+        
+        backToMenuBtn.addEventListener('click', () => {
+            rankingScreen.style.display = 'none';
+            // Check if we came from game over screen
+            if (gameOverScreen.style.display === 'block') {
+                // Return to game over screen
+            } else {
+                startMenu.style.display = 'flex';
+            }
+        });
+        
+        singleScoreTab.addEventListener('click', () => {
+            currentRankingView = 'single';
+            singleScoreTab.classList.add('active');
+            totalScoreTab.classList.remove('active');
+            loadFullRanking();
+        });
+        
+        totalScoreTab.addEventListener('click', () => {
+            currentRankingView = 'total';
+            totalScoreTab.classList.add('active');
+            singleScoreTab.classList.remove('active');
+            loadFullRanking();
+        });
+
+        // Initialize touch controls
+        initTouchControls();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (gameRunning) {
+                playerX = Math.min(playerX, gameContainer.offsetWidth - playerSize);
+                playerY = Math.min(playerY, gameContainer.offsetHeight - playerSize);
+            }
+        });
+
+        // Prevent scrolling on mobile
+        document.addEventListener('touchmove', (e) => {
+            if (gameRunning) e.preventDefault();
+        }, { passive: false });
+
+        /* Show start menu on load */
+        loadScoreData();
+        document.getElementById('bestScoreDisplay').textContent = `Best Score: ${bestScore}`;
+        document.getElementById('totalScoreDisplay').textContent = `Total Score: ${totalScore}`;
+        startMenu.style.display = 'flex';
+        updateSizes();
+        loadOnlineRanking();
+        
+        // Prevent form submission on Enter key
+        gameOverNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitScoreBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
